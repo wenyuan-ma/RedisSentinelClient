@@ -16,11 +16,12 @@ struct AsyncInfo
 
 
 
-RedisClient::RedisClient(const string& sentinel_addr, const string& bid, const string& password):m_KetamaHasher(NULL),m_ConfigPtr(NULL)
+RedisClient::RedisClient(const string& sentinel_addr, const string& bid, const string& mastername ,const string& password)
+    :m_KetamaHasher(NULL),m_ConfigPtr(NULL),m_BID(bid)
 {
 	if (m_ConfigPtr == NULL)
 	{
-		m_ConfigPtr = new RedisSentinelManager();
+        m_ConfigPtr = new RedisSentinelManager(mastername);
 		bool ret = m_ConfigPtr->Init(sentinel_addr, password);
 		if (!ret)
 		{
@@ -35,8 +36,6 @@ RedisClient::RedisClient(const string& sentinel_addr, const string& bid, const s
 	}
 
 	m_ConfigPtr->SetKetamaHasher(m_KetamaHasher);
-
-	m_BID = bid;
 
 	loop_ = aeCreateEventLoop(64);
 

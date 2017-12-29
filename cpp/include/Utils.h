@@ -15,7 +15,7 @@
 
 using namespace std;
 
-static std::string int2string(int i)
+static std::string int2string(const int i)
 {
 	stringstream stream;
 	stream << i;

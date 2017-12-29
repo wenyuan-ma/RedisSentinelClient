@@ -34,7 +34,7 @@ struct Comm
 class RedisClient
 {
 public:
-	  RedisClient(const string& sentinel_addr, const string& bid="", const string& password="");
+	  RedisClient(const string& sentinel_addr, const string& bid="", const string& mastername="", const string& password="");
 	  ~RedisClient();
 	  vector<RedisDB> AddServer(const string& masterName, const string& addr, int port);
 	  bool AddSentinelMonitor(const string& masterName, const string& addr, int port);
@@ -150,7 +150,6 @@ private:
 	  Ketama *m_KetamaHasher;
 	  RedisSentinelManager* m_ConfigPtr;
 	  string m_BID;
-
 	  aeEventLoop *loop_;
 
 private:

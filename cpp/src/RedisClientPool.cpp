@@ -124,6 +124,9 @@ redisContext* RedisClientPool::create()
 
 		if (password_ != "")
 		{
+			stringstream stream;
+			stream << address_ << ":" << port_<< " password: " << password_ ;
+			LOG(ERROR, stream.str());
 			redisCommand(ret, "AUTH %s", password_.c_str());
 		}
 
@@ -192,6 +195,13 @@ bool RedisClientPool::Reconnect(redisContext* rc)
 			// 建立错误直接返回NULL
 			redisFree(rc);
 			return false;
+		}
+		if (password_ != "")
+		{
+			stringstream stream;
+			stream << address_ << ":"<< " password: " << password_ ;
+			LOG(INFO, stream.str());
+			redisCommand(rc, "AUTH %s", password_.c_str());
 		}
 	} catch (std::exception &e)
 	{

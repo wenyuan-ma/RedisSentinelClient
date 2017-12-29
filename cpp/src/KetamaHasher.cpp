@@ -82,7 +82,7 @@ void Ketama::hash_config(const map<string, RedisClientPool*>& server_conn_map)
     for (map<string, RedisClientPool*>::const_iterator it = server_conn_map.begin();
         it != server_conn_map.end(); ++it)
     {
-    	for (int i=0; i<1024; ++i)
+    	for (int i=0; i<16; ++i)
     	{
     		RedisDB db;
     		db.SetRedisName(it->first);

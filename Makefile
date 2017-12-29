@@ -1,5 +1,6 @@
 
 all:
+	cd cpp && mkdir -p bin obj
 	cd cpp && make
 	cd cpp && make -f RedisCommandTool.Makefile
 	cd cpp && make -f RedistributeTool.Makefile

@@ -3,6 +3,8 @@
  * 1、在传入的sentinel地址中随机选取一个读取master节点信息，因为是同机房、
  *    同网段，所以暂不考虑在所有sentinel服务中选取延迟最小的一个这个逻辑。
  * 2、订阅master-switch事件，当集群信息有变化时，通知客户端更新集群信息
+ * 3、对于访问指定redis节点的情况许在初始化时候传入MasterName,可以保证连接
+ *    固定的redis节点
  *
  * Author:xu.yan@baifendian.com
  * Date:2014-04-04
@@ -37,9 +39,9 @@ struct Sentinel
 class RedisSentinelManager
 {
 public:
-	RedisSentinelManager();
+	RedisSentinelManager(const string mastername= "");
 	~RedisSentinelManager();
-	bool Init(const string& sentinels, const string& password);
+	bool Init(const string& sentinels, const string& password = "");
 	void SetKetamaHasher(Ketama *(&ketamaHasher)){m_KetamaHasher = ketamaHasher;};
 	void Terminate();
 //	bool CheckNewSentinel(const string& sentinel);
@@ -69,6 +71,7 @@ private:
 	pthread_mutex_t m_Mutex;
 
 	string m_Password;
+	string m_MasterName;
 	map<string, RedisClientPool*> m_Servers;
 	aeEventLoop *loop_;
 	pthread_t m_AEThreadID;

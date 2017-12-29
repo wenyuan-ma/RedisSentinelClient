@@ -8,7 +8,7 @@ namespace bfd
 {
 namespace redis
 {
-RedisSentinelManager::RedisSentinelManager():m_Mutex(PTHREAD_MUTEX_INITIALIZER),m_AEThreadID(0)
+RedisSentinelManager::RedisSentinelManager(const string mastername):m_Mutex(PTHREAD_MUTEX_INITIALIZER),m_AEThreadID(0),m_MasterName(mastername)
 {
 	// do nothing
 	loop_ = aeCreateEventLoop(64);
@@ -228,10 +228,21 @@ map<string, RedisClientPool*> RedisSentinelManager::GetServers(Sentinel& sen)
 			continue;
 		}
 		//printf("reply[%zu]: %s:%s,flags:%s\n", i, ip.c_str(), port.c_str(), flags.c_str());
-		servers.insert(make_pair(name, new RedisClientPool(ip, atoi(
-				port.c_str()), m_Password)));
+		if (m_MasterName != ""){
+            if (name == m_MasterName) {
+                servers.insert(make_pair(name, new RedisClientPool(ip, atoi(port.c_str()), m_Password)));
+            }
+		} else {
+		    servers.insert(make_pair(name, new RedisClientPool(ip, atoi(port.c_str()), m_Password)));
+		}
 	}
 
+	if (servers.size() == 0) {
+	    stringstream stream;
+	    stream << "redis sentinel masters connect Error. Maybe the sentinel don't have correct master."<< m_MasterName;
+	    LOG(ERROR, stream.str());
+	    exit(-1);
+	}
 	if (c != NULL)
 	{
 		redisFree(c);
@@ -264,13 +275,23 @@ void RedisSentinelManager::UpdateServers(const string& master_name,
 	port = addr_vec[1];
 
 	ScopedLock lock(m_Mutex);
-	m_Servers.erase(master_name);
-	m_Servers.insert(make_pair(master_name, new RedisClientPool(ip, atoi(
-			port.c_str()))));
-	m_KetamaHasher->Init(m_Servers);
 
 	stringstream stream;
-	stream << "master:" << master_name << ", new_addr:" << new_addr;
+	if (m_MasterName != ""){
+	    if (master_name == m_MasterName) {
+	        delete m_Servers[master_name];
+	        m_Servers[master_name] = new RedisClientPool(ip, atoi(port.c_str()), m_Password);
+	        m_KetamaHasher->Init(m_Servers);
+	        stream << "update:" << master_name << ", new_addr:" << new_addr;
+	    } else {
+	        stream << "Single redis mode. Exclude master" << master_name << ", addr:" << new_addr;
+	    }
+	} else {
+        delete m_Servers[master_name];
+        m_Servers[master_name] = new RedisClientPool(ip, atoi(port.c_str()), m_Password);
+        m_KetamaHasher->Init(m_Servers);
+        stream << "master:" << master_name << ", new_addr:" << new_addr;
+	}
 	LOG(INFO, stream.str());
 }
 //--Async function
@@ -427,12 +448,22 @@ void* RedisSentinelManager::AEThread(void *arg)
 
 vector<RedisDB> RedisSentinelManager::AddServer(const string& masterName, const string& addr, int port)
 {
-	m_Servers[masterName] = new RedisClientPool(addr, port, m_Password);
+    stringstream stream;
+    vector<RedisDB> dbs;
+    if (m_MasterName != ""){
+        if (masterName == m_MasterName) {
+            m_Servers[masterName] = new RedisClientPool(addr, port, m_Password);
+            dbs = m_KetamaHasher->Reset(m_Servers);
+            stream << "Add Server for single redis mode:" << masterName << ", add new_addr:" << addr << ", port=" << port;
+        } else {
+            stream << "single redis mode. Can't add redis server:" << masterName << " addr:" << addr << " port:" << port;
+        }
+    } else {
+        m_Servers[masterName] = new RedisClientPool(addr, port, m_Password);
+        dbs = m_KetamaHasher->Reset(m_Servers);
+        stream << "master:" << masterName << ", add new_addr:" << addr << ", port=" << port;
+    }
 
-	vector<RedisDB> dbs = m_KetamaHasher->Reset(m_Servers);
-
-	stringstream stream;
-	stream << "master:" << masterName << ", add new_addr:" << addr << ", port=" << port;
 	LOG(INFO, stream.str());
 
 	return dbs;
